@@ -1,0 +1,77 @@
+name: Build and publish Meter OCR v6
+
+on:
+  workflow_dispatch:
+    inputs:
+      variant:
+        description: Images to publish
+        type: choice
+        default: both
+        options: [both, cpu, gpu]
+
+permissions:
+  contents: read
+
+concurrency:
+  group: meter-v6-dockerhub
+  cancel-in-progress: false
+
+jobs:
+  publish:
+    name: linux/amd64 v6-${{ matrix.variant }}
+    runs-on: ubuntu-24.04
+    timeout-minutes: 120
+    strategy:
+      fail-fast: false
+      max-parallel: 1
+      matrix:
+        variant: ${{ fromJSON(inputs.variant == 'both' && '["cpu","gpu"]' || format('["{0}"]', inputs.variant)) }}
+    steps:
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
+        with:
+          persist-credentials: false
+
+      - name: Download pinned build context from this repository
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh release download v6-build-20261013 --repo "$GITHUB_REPOSITORY" --pattern meter-v6-amd64-build.zip --dir "$RUNNER_TEMP/v6-download"
+          python3 tools/verify_extract.py "$RUNNER_TEMP/v6-download/meter-v6-amd64-build.zip" "$RUNNER_TEMP/v6-context"
+
+      - name: Make room for CUDA dependencies on the hosted runner
+        run: |
+          # Only expendable SDKs in this ephemeral GitHub VM; never runs locally.
+          sudo rm -rf /usr/local/lib/android /usr/share/dotnet /opt/ghc
+          df -h /
+
+      - name: Log in to Docker Hub
+        uses: docker/login-action@dbcb813823bdd20940b903addbd779551569679f # v4
+        with:
+          username: wayu199
+          password: ${{ secrets.DOCKERHUB_TOKEN }}
+
+      - name: Set up Buildx
+        uses: docker/setup-buildx-action@f87e5991a6d7451dcb8d9637bfbc97413f497069 # v4
+
+      - name: Build and push
+        id: build
+        uses: docker/build-push-action@c3c9e263c25d99ce0380d002d59b67737d91b0dc # v7
+        with:
+          context: ${{ runner.temp }}/v6-context/meter-v6
+          file: ${{ runner.temp }}/v6-context/meter-v6/Dockerfile.${{ matrix.variant }}
+          platforms: linux/amd64
+          push: true
+          tags: wayu199/meter-ocr:v6-${{ matrix.variant }}
+          provenance: mode=min
+          # Large GPU layers must not consume both local image storage and an archive.
+          # BuildKit streams the result straight to Docker Hub (no load/save).
+
+      - name: Verify published architecture and record digest
+        env:
+          IMAGE: wayu199/meter-ocr:v6-${{ matrix.variant }}
+          DIGEST: ${{ steps.build.outputs.digest }}
+        run: |
+          docker buildx imagetools inspect "$IMAGE@$DIGEST" --raw > "$RUNNER_TEMP/manifest.json"
+          python3 tools/verify_platform.py "$RUNNER_TEMP/manifest.json"
+          printf '### Published\n\n`%s`\n\nDigest: `%s`\n\nArchitecture: `linux/amd64`\n' "$IMAGE" "$DIGEST" >> "$GITHUB_STEP_SUMMARY"
+          printf '\nBuild and publication verified. No dataset accuracy benchmark or GPU inference was run on this CPU hosted runner.\n' >> "$GITHUB_STEP_SUMMARY"
