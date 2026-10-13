@@ -1,0 +1,21 @@
+{
+  "status": "passed",
+  "scope": "API contract checks with synthetic stub; no inference, no dataset benchmark, no network callbacks",
+  "unchanged_legacy_functions_and_schemas": 27,
+  "routes": [
+    "get//health",
+    "get//tasks/{task_id}",
+    "post//async-callback/imageurl",
+    "post//async-callback/imageurl/batch",
+    "post//imageurl",
+    "post//imageurl/batch",
+    "post//uploadimage",
+    "post//uploadimage/batch"
+  ],
+  "checks": {
+    "multipart": 200,
+    "base64": 200,
+    "candidate": 422,
+    "batch": 200
+  }
+}
