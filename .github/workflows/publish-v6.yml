@@ -35,7 +35,8 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
-          gh release download v6-build-20261013 --repo "$GITHUB_REPOSITORY" --pattern meter-v6-amd64-build.zip --dir "$RUNNER_TEMP/v6-download"
+          RELEASE_TAG=$(jq -r .release build-context.json)
+          gh release download "$RELEASE_TAG" --repo "$GITHUB_REPOSITORY" --pattern meter-v6-amd64-build.zip --dir "$RUNNER_TEMP/v6-download"
           python3 tools/verify_extract.py "$RUNNER_TEMP/v6-download/meter-v6-amd64-build.zip" "$RUNNER_TEMP/v6-context"
 
       - name: Make room for CUDA dependencies on the hosted runner
