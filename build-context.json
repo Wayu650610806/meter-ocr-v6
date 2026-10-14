@@ -1,7 +1,7 @@
 {
-  "release": "v6-build-20261013-r3",
+  "release": "v6-build-20261014-r4",
   "asset": "meter-v6-amd64-build.zip",
-  "sha256": "d7efe1dd3fe4238eec4d817dde51de7d9f1258b118185263f877b7e992793c5c",
+  "sha256": "a178b70f479183cc06cdbdbefb4da6cfb07cd3978c42619eb61ef808e12754a6",
   "models": "NOTE16 detector + Final water adapter + legacy v5 electric",
   "architecture": "linux/amd64"
 }

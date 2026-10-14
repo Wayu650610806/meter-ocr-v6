@@ -76,3 +76,25 @@ jobs:
           python3 tools/verify_platform.py "$RUNNER_TEMP/manifest.json"
           printf '### Published\n\n`%s`\n\nDigest: `%s`\n\nArchitecture: `linux/amd64`\n' "$IMAGE" "$DIGEST" >> "$GITHUB_STEP_SUMMARY"
           printf '\nBuild and publication verified. No dataset accuracy benchmark or GPU inference was run on this CPU hosted runner.\n' >> "$GITHUB_STEP_SUMMARY"
+
+      - name: CPU API and actual model smoke on synthetic pixels
+        if: matrix.variant == 'cpu'
+        timeout-minutes: 35
+        env:
+          IMAGE: wayu199/meter-ocr:v6-cpu
+          DIGEST: ${{ steps.build.outputs.digest }}
+        run: |
+          # Extra swap is only for this disposable hosted runner; production dtype is unchanged.
+          sudo fallocate -l 16G /mnt/meter-smoke.swap
+          sudo chmod 600 /mnt/meter-smoke.swap
+          sudo mkswap /mnt/meter-smoke.swap
+          sudo swapon /mnt/meter-smoke.swap
+          free -h
+          docker pull "$IMAGE@$DIGEST"
+          mkdir -p "$RUNNER_TEMP/smoke-report"
+          chmod 777 "$RUNNER_TEMP/smoke-report"
+          docker run --rm --name meter-v6-cpu-smoke --shm-size=1g \
+            -e SMOKE_REPORT=/smoke-report/result.json \
+            -v "$RUNNER_TEMP/smoke-report:/smoke-report" \
+            --entrypoint python "$IMAGE@$DIGEST" -u tools/smoke_v6_full.py
+          cat "$RUNNER_TEMP/smoke-report/result.json" >> "$GITHUB_STEP_SUMMARY"
