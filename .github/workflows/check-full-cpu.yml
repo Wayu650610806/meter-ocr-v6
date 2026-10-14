@@ -1,0 +1,29 @@
+name: Full-length published CPU runtime test
+on:
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  actual-runtime:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803
+        with:
+          persist-credentials: false
+      - name: Full CPU API and water JSON with production token budget
+        env:
+          IMAGE: wayu199/meter-ocr@sha256:c7069c029969f55d8281da3060ca34e3533e087adb3ed753cbdb5148ff020d16
+        run: |
+          sudo fallocate -l 16G /mnt/meter-smoke.swap
+          sudo chmod 600 /mnt/meter-smoke.swap
+          sudo mkswap /mnt/meter-smoke.swap
+          sudo swapon /mnt/meter-smoke.swap
+          docker pull "$IMAGE"
+          mkdir -p "$RUNNER_TEMP/full-report"
+          chmod 777 "$RUNNER_TEMP/full-report"
+          docker run --rm --shm-size=1g -e SMOKE_REPORT=/report/result.json \
+            -v "$RUNNER_TEMP/full-report:/report" \
+            -v "$GITHUB_WORKSPACE/tools/test_full_cpu.py:/app/tools/test_full_cpu.py:ro" \
+            --entrypoint python "$IMAGE" -u tools/test_full_cpu.py
+          cat "$RUNNER_TEMP/full-report/result.json" >> "$GITHUB_STEP_SUMMARY"
