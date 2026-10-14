@@ -8,12 +8,15 @@ jobs:
     runs-on: ubuntu-24.04
     timeout-minutes: 20
     steps:
-      - name: Load electric models from the published image (no Qwen, no dataset)
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803
+        with:
+          persist-credentials: false
+      - name: Build and verify HF dependency fix (no Qwen, no dataset)
         shell: bash
         run: |
           set -o pipefail
-          docker pull wayu199/meter-ocr:v6-cpu
+          docker build --pull --progress=plain -f Dockerfile.hf-cpu-fix -t meter-v6-hf-check .
           docker run --rm --memory=4g --cpus=2 \
             --entrypoint /opt/v5/bin/python \
-            wayu199/meter-ocr:v6-cpu \
+            meter-v6-hf-check \
             -u /app/meter_delivery/v5_worker.py --bundle /app --device cpu </dev/null

@@ -1,0 +1,18 @@
+FROM wayu199/meter-ocr:v6-cpu
+
+# Paddle 3.2 imports setuptools; Python 3.12 venv does not install it by default.
+USER root
+RUN /opt/v5/bin/python -m pip install --no-cache-dir setuptools==80.9.0
+USER appuser
+# Fail during build with the real traceback, before downloading the water model.
+RUN /opt/v5/bin/python -u /app/meter_delivery/v5_worker.py --bundle /app --device cpu </dev/null
+
+# The CPU image already contains the application, adapter and legacy models.
+# Public Qwen base weights are verified and downloaded at first startup.
+ENV PORT=7860 \
+    METER_DEVICE=cpu \
+    METER_BUILD_DEVICE=cpu \
+    MAX_CONCURRENCY=1
+
+EXPOSE 7860
+CMD ["python", "-m", "meter_delivery.entrypoint"]
