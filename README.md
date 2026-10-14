@@ -28,8 +28,10 @@ docker run --rm --gpus all -p 8080:8080 -e OCR_API_KEY -v meter-v6-models:/model
 
 First startup downloads the pinned public Qwen base (~4 GB), verifies its hashes, and caches it in `/models`. API authentication keys are runtime secrets and are not baked into images. One worker and one concurrent inference are the defaults.
 
-Successful CI confirms build/publication and platform, not accuracy or GPU inference: the hosted runner has no GPU. No new dataset benchmark is requested. Water VLM confidence is uncalibrated; parsing complete fields does not itself establish high confidence. See `README_TH.md` inside the release for API details.
+The r4 build includes setuptools in both Paddle environments. CPU builds execute the electric models on synthetic pixels before publication. GPU builds check Paddle CUDA support and ONNX CUDA-provider registration without executing CUDA kernels. After the CPU image is published, CI loads the actual API and water model, checks health/auth/upload/annotation-proposal, and runs a bounded eight-token water generation smoke. It uses swap on the disposable hosted runner when necessary; production dtype and token limits are unchanged.
 
-Hugging Face remains deferred until both Docker Hub tags are ready. It will use CPU and one Dockerfile based on `v6-cpu`.
+These checks are not dataset accuracy, a latency benchmark, or proof of GPU inference. The hosted runner has no GPU. Water VLM confidence is uncalibrated; parsing complete fields does not itself establish high confidence. The image contains `tools/smoke_v6_electric.py --device gpu` and `tools/smoke_v6_full.py` for execution with `docker run --gpus all --entrypoint python` on a real NVIDIA host.
+
+The existing Hugging Face Space uses CPU through a small Dockerfile wrapper. Updating a Docker Hub tag does not rebuild an already running Space automatically.
 
 Workflow uses pinned commits of [Docker's official GitHub Actions](https://docs.docker.com/guides/gha/).
