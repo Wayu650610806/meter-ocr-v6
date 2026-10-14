@@ -1,0 +1,19 @@
+name: Diagnose published v6 CPU electric worker
+on:
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  worker:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    steps:
+      - name: Load electric models from the published image (no Qwen, no dataset)
+        shell: bash
+        run: |
+          set -o pipefail
+          docker pull wayu199/meter-ocr:v6-cpu
+          docker run --rm --memory=4g --cpus=2 \
+            --entrypoint /opt/v5/bin/python \
+            wayu199/meter-ocr:v6-cpu \
+            -u /app/meter_delivery/v5_worker.py --bundle /app --device cpu </dev/null
